@@ -1,7 +1,3 @@
-src/__pycache__/__init__.cpython-311.pyc
-.vscode/settings.json
-src/__pycache__/base.cpython-311.pyc
-src/__pycache__/dmft.cpython-311.pyc
-src/__pycache__/orthogonal_dmft.cpython-311.pyc
-src/__pycache__/example.cpython-311.pyc
-src/__pycache__/utils.cpython-311.pyc
+src/pycache
+.venv
+.vscode
