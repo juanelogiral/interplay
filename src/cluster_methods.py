@@ -1,8 +1,6 @@
 '''Function callables for clustering within the InteractionClustering class
 '''
 
-import ecosim
-from base import InteractionNetwork
 import numpy as np
 
 # This finds k clusters by applying a Metropolis algorithm similar to the one in lv_optimize_clusters but with the projection

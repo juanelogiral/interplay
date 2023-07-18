@@ -1,7 +1,6 @@
 from .base import InteractionNetwork
 from .utils import Interpolator
 from .dmft import EqdmftModel
-import ecosim
 import numpy as np
 from scipy.special import erf
 from math import sqrt,exp,pi 

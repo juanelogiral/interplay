@@ -1,4 +1,3 @@
-from .base import InteractionNetwork
 import ecosim
 import scipy.integrate
 import numpy as np

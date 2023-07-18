@@ -1,9 +1,7 @@
 from .base import DynamicModel
 from .orthogonal_dmft import Eqdmft_orthogonal
 import numpy as np
-from math import sqrt
 import matplotlib.pyplot as plt
-from ecosim.plot import lineplot
 from scipy import stats
 
 

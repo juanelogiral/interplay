@@ -1,7 +1,5 @@
 import numpy as np
 import scipy
-from .base import InteractionNetwork
-
 
 default_args = {}
 
