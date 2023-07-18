@@ -1,10 +1,12 @@
-from .base import InteractionNetwork
-from .utils import Interpolator
-from .dmft import EqdmftModel
+from math import exp, pi, sqrt
+
 import numpy as np
-from scipy.special import erf
-from math import sqrt, exp, pi
 from scipy.integrate import quad
+from scipy.special import erf
+
+from .base import InteractionNetwork
+from .dmft import EqdmftModel
+from .utils import Interpolator
 
 """ A specific class for solving dmft models where the interaction matrix reads a_ij = z_ij for z_ij orthogonally invariant
 variables

@@ -1,7 +1,6 @@
 import ecosim
-import scipy.integrate
 import numpy as np
-
+import scipy.integrate
 
 """ Classes for solving dmft equations
 """

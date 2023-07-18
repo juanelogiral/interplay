@@ -1,5 +1,6 @@
-import transformer_methods
 import inspect
+
+import transformer_methods
 
 
 class tr_metaclass(type):

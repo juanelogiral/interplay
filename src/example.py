@@ -1,9 +1,9 @@
-from .base import DynamicModel
-from .orthogonal_dmft import Eqdmft_orthogonal
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy import stats
 
+from .base import DynamicModel
+from .orthogonal_dmft import Eqdmft_orthogonal
 
 S = 1000
 T = 25

@@ -1,8 +1,10 @@
-from .base import InteractionNetwork
-from .dmft import EqdmftModel
+from math import exp, pi, sqrt
+
 import numpy as np
 from scipy.special import erf
-from math import sqrt, exp, pi
+
+from .base import InteractionNetwork
+from .dmft import EqdmftModel
 
 """ A specific class for solving dmft models where the interaction matrix reads a_ij = mu_ij + sig * z_ij for z_ij gaussian
 variables

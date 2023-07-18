@@ -4,9 +4,10 @@
     We use the Storable class from ecosim to pickle
 """
 
+import copy
+
 import ecosim
 import numpy as np
-import copy
 
 
 class Function(ecosim.base.Storable):

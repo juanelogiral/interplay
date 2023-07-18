@@ -1,10 +1,11 @@
 """ Some miscellaneous code that is useful at some places
 """
 
-import numpy as np
 from bisect import bisect_left
-import seaborn as sns
+
 import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 from scipy.integrate import cumtrapz
 
 """ Given a function, this class tabulates its values and then defines an interpolated version of the original function

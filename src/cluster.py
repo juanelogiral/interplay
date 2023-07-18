@@ -2,11 +2,14 @@
 into 'functional' groups
 """
 
-import ecosim
-from .base import InteractionNetwork
-import cluster_methods
 from inspect import getmembers, isfunction
+
+import ecosim
 import numpy as np
+
+import cluster_methods
+
+from .base import InteractionNetwork
 
 
 class icm_metaclass(type):
