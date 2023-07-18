@@ -1,10 +1,9 @@
-from base import InteractionNetwork
-from dmft import EqdmftModel
+from .base import InteractionNetwork
+from .dmft import EqdmftModel
 import ecosim
 import numpy as np
 from scipy.special import erf
 from math import sqrt,exp,pi
-from tqdm import tqdm
 
 ''' A specific class for solving dmft models where the interaction matrix reads a_ij = mu_ij + sig * z_ij for z_ij gaussian
 variables
@@ -71,13 +70,13 @@ class Eqdmft_gaussian(EqdmftModel):
         y0 = np.ones(S)
         
         if verbose:
-            for i in tqdm(range(n_iter),total=n_iter):
+            for i in range(n_iter):
                 y0 = y0*(1-r) + r * op1(y0,q0,chi0)
                 chi0 = chi0*(1-r) + r * op2(y0,q0,chi0)
                 q0 = q0*(1-r) + r * op3(y0,q0,chi0)
             print("Errors are (%f , %f , %f)"%(np.linalg.norm(y0-op1(y0,q0,chi0)),chi0-op2(y0,q0,chi0),q0-op3(y0,q0,chi0)))
         else:
-            for i in tqdm(range(n_iter),total=n_iter):
+            for i in range(n_iter):
                 y0 = y0*(1-r) + r * op1(y0,q0,chi0)
                 chi0 = chi0*(1-r) + r * op2(y0,q0,chi0)
                 q0 = q0*(1-r) + r * op3(y0,q0,chi0)
@@ -159,13 +158,13 @@ class Eqdmft_uniform_gaussian(EqdmftModel):
         y0 = 1
 
         if verbose:
-            for i in tqdm(range(n_iter),total=n_iter):
+            for i in range(n_iter):
                 y0 = y0*(1-r) + r * op1(y0,q0,chi0)
                 chi0 = chi0*(1-r) + r * op2(y0,q0,chi0)
                 q0 = q0*(1-r) + r * op3(y0,q0,chi0)
             print("Errors are (%f , %f , %f)"%(y0-op1(y0,q0,chi0),chi0-op2(y0,q0,chi0),q0-op3(y0,q0,chi0)))
         else:
-            for i in tqdm(range(n_iter),total=n_iter):
+            for i in range(n_iter):
                 y0 = y0*(1-r) + r * op1(y0,q0,chi0)
                 chi0 = chi0*(1-r) + r * op2(y0,q0,chi0)
                 q0 = q0*(1-r) + r * op3(y0,q0,chi0)

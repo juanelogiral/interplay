@@ -3,7 +3,7 @@ into 'functional' groups
 '''
 
 import ecosim
-from base import InteractionNetwork
+from .base import InteractionNetwork
 import cluster_methods
 from inspect import getmembers, isfunction
 import numpy as np

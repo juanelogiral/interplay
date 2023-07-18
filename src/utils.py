@@ -198,7 +198,7 @@ class GeneralInterpolator():
 
     def plot(self):
         sns.set_style('darkgrid')
-        pl = sns.lineplot(self._vec_x,self._vec_y,linewidth=1.5)
+        pl = sns.lineplot(x=self._vec_x,y=self._vec_y,linewidth=1.5)
         pl.legend([],[], frameon=False)
         plt.show()
 

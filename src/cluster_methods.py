@@ -3,7 +3,6 @@
 
 import ecosim
 from base import InteractionNetwork
-import tqdm
 import numpy as np
 
 # This finds k clusters by applying a Metropolis algorithm similar to the one in lv_optimize_clusters but with the projection
@@ -26,7 +25,7 @@ def cluster_spectral_optimize_metropolis(i_network,k,T,max_iter):
     err = np.inf
     err_list = [np.inf]
     
-    for i in tqdm(range(max_iter),total=max_iter):
+    for i in range(max_iter):
         # at each iteration, swap ONE individual from one group to another
         new_grp = grp_idx.copy()
         new_grp[np.random.randint(low=0,high=N)] = np.random.randint(low=0,high=k)

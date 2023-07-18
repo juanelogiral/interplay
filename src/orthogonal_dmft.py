@@ -4,8 +4,7 @@ from .dmft import EqdmftModel
 import ecosim
 import numpy as np
 from scipy.special import erf
-from math import sqrt,exp,pi
-from tqdm import tqdm
+from math import sqrt,exp,pi 
 from scipy.integrate import quad
 
 ''' A specific class for solving dmft models where the interaction matrix reads a_ij = z_ij for z_ij orthogonally invariant
@@ -137,8 +136,6 @@ class Eqdmft_orthogonal(EqdmftModel):
         R_tr = g_tr.inverse() - (lambda x : 1/x)
         dR_tr = 1 / (dg_tr @ g_tr.inverse()) + (lambda x : 1/x**2)
 
-        R_tr.plot()
-
         omega0 = lambda delta : (1+erf(delta/sqrt(2)))/2
         omega2 = lambda delta : omega0(delta) * (1+delta**2) + delta* exp(-delta**2 / 2) / sqrt(2*pi)
 
@@ -151,7 +148,7 @@ class Eqdmft_orthogonal(EqdmftModel):
         z0 = 1
         
         if verbose:
-            for i in tqdm(range(n_iter),total=n_iter):
+            for i in range(n_iter):
                 dz0 = dz0*(1-r) + r * op1(q0,dz0,z0)
                 z0= z0*(1-r) + r * op2(q0,dz0,z0)
                 q0 = q0*(1-r) + r * op3(q0,dz0,z0)

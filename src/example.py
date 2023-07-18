@@ -1,5 +1,5 @@
-from interplay.base import DynamicModel
-from interplay.orthogonal_dmft import Eqdmft_orthogonal
+from .base import DynamicModel
+from .orthogonal_dmft import Eqdmft_orthogonal
 import numpy as np
 from math import sqrt
 import matplotlib.pyplot as plt
@@ -7,7 +7,7 @@ from ecosim.plot import lineplot
 from scipy import stats
 
 
-S = 2000
+S = 1000
 T=25
 dt=.1
 gam=-1
