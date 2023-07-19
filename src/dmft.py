@@ -13,6 +13,9 @@ class dmftModel(ecosim.base.Storable):
 
     def full_solve(self):
         raise RuntimeError("full_solve has not been implemented for this model.")
+    
+    def test_data(self):
+        raise RuntimeError("test_data has not been implemented for this model.")
 
     @property
     def K(self):
@@ -50,3 +53,6 @@ class EqdmftModel(dmftModel):
 
     def full_solve(self):
         raise RuntimeError("full_solve has not been implemented for this model.")
+    
+    def test_data(self):
+        return RuntimeError("test_data has not been implemented for this model.")

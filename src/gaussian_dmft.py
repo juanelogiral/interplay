@@ -68,22 +68,12 @@ class Eqdmft_gaussian(EqdmftModel):
         sig = self.sig
         gam = self.gam
 
-        op1 = lambda y, q, chi: np.array(
-            [
-                np.sum(mu[i] * omega1(y + K / sqrt(q * sig**2)))
-                / (1 - gam * sig**2 * chi)
+        op1 = lambda y, q, chi: np.array([
+                np.sum(mu[i] * omega1(y + K / sqrt(q * sig**2)))/ (1 - gam * sig**2 * chi)
                 for i in range(S)
-            ]
-        )
-        op2 = lambda y, q, chi: np.mean(omega0(y + K / sqrt(q * sig**2))) / (
-            1 - gam * sig**2 * chi
-        )
-        op3 = (
-            lambda y, q, chi: sig**2
-            * q
-            * np.mean(omega2(y + K / sqrt(q * sig**2)))
-            / (1 - gam * sig**2 * chi) ** 2
-        )
+            ])
+        op2 = lambda y, q, chi: np.mean(omega0(y + K / sqrt(q * sig**2))) / (1 - gam * sig**2 * chi)
+        op3 = lambda y, q, chi: sig**2* q * np.mean(omega2(y + K / sqrt(q * sig**2))) / (1 - gam * sig**2 * chi) ** 2
 
         q0 = 1
         chi0 = 1
@@ -108,31 +98,13 @@ class Eqdmft_gaussian(EqdmftModel):
                 chi0 = chi0 * (1 - r) + r * op2(y0, q0, chi0)
                 q0 = q0 * (1 - r) + r * op3(y0, q0, chi0)
 
-        self._SAD = (
-            lambda x: (1 - gam * sig**2 * chi0)
-            * np.mean(
-                [
-                    exp(
-                        -(
-                            (
-                                x * (1 - gam * sig**2 * chi0) / sqrt(q0 * sig**2)
-                                - y0[i]
-                                - K[i] / sqrt(q0 * sig**2)
-                            )
-                            ** 2
-                        )
-                        / 2
-                    )
-                    for i in range(S)
-                ]
-            )
-            / sqrt(2 * pi * sig**2 * q0)
-        )
+        d_means = (K + sig * sqrt(q0) * y0) / (1 - gam * sig**2 * chi0)
+        d_std = sig * sqrt(q0) / (1 - gam * sig**2 * chi0)
+
+        self._SAD = lambda x : np.mean(exp(-(x-d_means)**2 / (2 * d_std**2)))/sqrt(2 * pi * d_std**2)
         self._SAD_bounds = (
             0,
-            (4 + np.max(y0) - K / sqrt(q0 * sig**2))
-            * sqrt(q0 * sig**2)
-            / (1 - gam * sig**2 * chi0),
+            (4 + np.max(y0) - K / sqrt(q0 * sig**2))* sqrt(q0 * sig**2)/ (1 - gam * sig**2 * chi0),
         )
         self._self_avg_quantities["q"] = q0
         self._self_avg_quantities["chi"] = chi0
@@ -190,12 +162,8 @@ class Eqdmft_uniform_gaussian(EqdmftModel):
 
     def full_solve(self, verbose=True, n_iter=200, r=0.25):
         omega0 = lambda delta: (1 + erf(delta / sqrt(2))) / 2
-        omega1 = lambda delta: delta * omega0(delta) + exp(-(delta**2) / 2) / sqrt(
-            2 * pi
-        )
-        omega2 = lambda delta: omega0(delta) * (1 + delta**2) + delta * exp(
-            -(delta**2) / 2
-        ) / sqrt(2 * pi)
+        omega1 = lambda delta: delta * omega0(delta) + exp(-(delta**2) / 2) / sqrt( 2 * pi)
+        omega2 = lambda delta: omega0(delta) * (1 + delta**2) + delta * exp(-(delta**2) / 2) / sqrt(2 * pi)
 
         self._interaction_network.sample_matrix()
         mu = self._interaction_network.structure_component
@@ -206,20 +174,9 @@ class Eqdmft_uniform_gaussian(EqdmftModel):
         mu = self.mu
         gam = self.gam
 
-        op1 = (
-            lambda y, q, chi: mu
-            * omega1(y + K / sqrt(q * sig**2))
-            / (1 - gam * sig**2 * chi)
-        )
-        op2 = lambda y, q, chi: omega0(y + K / sqrt(q * sig**2)) / (
-            1 - gam * sig**2 * chi
-        )
-        op3 = (
-            lambda y, q, chi: sig**2
-            * q
-            * omega2(y + K / sqrt(q * sig**2))
-            / (1 - gam * sig**2 * chi) ** 2
-        )
+        op1 = lambda y, q, chi: mu* omega1(y + K / sqrt(q * sig**2))/ (1 - gam * sig**2 * chi)
+        op2 = lambda y, q, chi: omega0(y + K / sqrt(q * sig**2)) / (1 - gam * sig**2 * chi)
+        op3 = lambda y, q, chi: sig**2* q* omega2(y + K / sqrt(q * sig**2))/ (1 - gam * sig**2 * chi) ** 2
 
         q0 = 1
         chi0 = 1
@@ -247,14 +204,10 @@ class Eqdmft_uniform_gaussian(EqdmftModel):
         d_mean = (K + sig * sqrt(q0) * y0) / (1 - gam * sig**2 * chi0)
         d_std = sig * sqrt(q0) / (1 - gam * sig**2 * chi0)
 
-        self._SAD = lambda x: exp(-0.5 * (x - d_mean) ** 2 / d_std**2) / sqrt(
-            2 * pi * d_std**2
-        )
+        self._SAD = lambda x: exp(-0.5 * (x - d_mean) ** 2 / d_std**2) / sqrt(2 * pi * d_std**2)
         self._SAD_bounds = (
             0,
-            (4 + np.max(y0) - K / sqrt(q0 * sig**2))
-            * sqrt(q0 * sig**2)
-            / (1 - gam * sig**2 * chi0),
+            (4 + np.max(y0) - K / sqrt(q0 * sig**2))* sqrt(q0 * sig**2)/ (1 - gam * sig**2 * chi0),
         )
         self._self_avg_quantities["q"] = q0
         self._self_avg_quantities["chi"] = chi0
