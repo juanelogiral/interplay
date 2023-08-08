@@ -6,7 +6,9 @@ from scipy.special import erf
 
 from .base import InteractionNetwork
 from .dmft import EqdmftModel
-from .utils import Interpolator
+from .utils import Interpolator, KL_divergence, gaussian_KL_divergence,cdf_distance
+from scipy.stats import norm
+from scipy.optimize import fsolve
 
 """ A specific class for solving dmft models where the interaction matrix reads a_ij = z_ij for z_ij orthogonally invariant
 variables
@@ -157,9 +159,7 @@ class Eqdmft_orthogonal(EqdmftModel):
         dR_tr = 1 / (dg_tr @ g_tr.inverse()) + (lambda x: 1 / x**2)
 
         omega0 = lambda delta: (1 + erf(delta / sqrt(2))) / 2
-        omega2 = lambda delta: omega0(delta) * (1 + delta**2) + delta * exp(
-            -(delta**2) / 2
-        ) / sqrt(2 * pi)
+        omega2 = lambda delta: omega0(delta) * (1 + delta**2) + delta * exp( -(delta**2) / 2) / sqrt(2 * pi)
 
         op1 = lambda q, dz, z: self._gam * (R_tr(omega0(1 / sqrt(z)) / (1 - dz)))
         op2 = lambda q, dz, z: q * dR_tr(omega0(1 / sqrt(z)) / (1 - dz))
@@ -198,3 +198,61 @@ class Eqdmft_orthogonal(EqdmftModel):
         self._self_avg_quantities["q"] = q0
         self._self_avg_quantities["dz"] = dz0
         self._self_avg_quantities["z"] = z0
+        
+    @classmethod
+    def test_data(self, data,spectrum,r=.25,n_iter=200,**kwargs):
+        '''Spectrum should be provided as list, not callable
+        '''
+        
+        abundance_thr = 1e-3
+        extant = np.where(data >= abundance_thr)
+        
+        # A solver that given spectrum and q computes z and dz and returns the expected std
+
+        def orthogonal_std(_spectrum,*args):
+            if not len(args):
+                lmax = _spectrum[-1]
+            else:
+                lmax = args[0]
+            
+            g_tr = Interpolator(
+                lambda x: np.mean(1 / (x - _spectrum[:-1])), (lmax, lmax + 100), 0.01)
+            dg_tr = Interpolator(
+                lambda x: -np.mean(1 / (x - _spectrum[:-1]) ** 2), (lmax, lmax + 100), 0.01)
+
+            R_tr = g_tr.inverse() - (lambda x: 1 / x)
+            dR_tr = 1 / (dg_tr @ g_tr.inverse()) + (lambda x: 1 / x**2)
+            
+            #Using the empirical value for q, solve for dz and z
+            q = np.mean(data**2)
+            
+            omega0 = lambda delta: (1 + erf(delta / sqrt(2))) / 2
+            op1 = lambda dz, z: self._gam * (R_tr(omega0(1 / sqrt(z)) / (1 - dz)))
+            op2 = lambda dz, z: q * dR_tr(omega0(1 / sqrt(z)) / (1 - dz))
+
+            dz0 = 0.5
+            z0 = 1
+            for i in range(n_iter):
+                dz0 = dz0 * (1 - r) + r * op1(q, dz0, z0)
+                z0 = z0 * (1 - r) + r * op2(q, dz0, z0)
+        
+        
+        Z = (data[extant] - 1) / orthogonal_std(spectrum,**kwargs) #under the null model Z is a centered unit gaussian
+        KL_div = KL_divergence(Z, norm.pdf)
+        
+        #Now check how far parameters should be from (mu,sig,gam) to get a KL_divergence as high as the one we got and use that
+        #as a measure of distance. Right now we do this with gradient descent, but stochastic search might give a different answer
+        
+        def _minimizer(_spectrum,*args):
+            return gaussian_KL_divergence((1,orthogonal_std(_spectrum,*args)),(1,orthogonal_std(spectrum,*args)))
+        
+        out = fsolve(lambda _ : _minimizer,spectrum,full_output=True,args=(kwargs['lambda_max'],) if 'lambda_max' in kwargs else ())
+        x,status = out[0],out[2]
+        
+        if status != 1:
+            return np.inf
+        else:
+            #the distance is defined as the supremum of the difference between the CDF of the two distributions
+            return cdf_distance(x,spectrum)
+        
+

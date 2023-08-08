@@ -184,6 +184,7 @@ class InteractionNetwork(ecosim.base.Storable):
         else:
             self._interaction_matrix = np.zeros((self.S, self.S))
         self._structure_component = np.zeros((self.S, self.S))
+        
         if include_functions:
             for fun in self._functions:
                 self._structure_component += fun.yields[:, None] @ fun.sources[None, :]
@@ -274,9 +275,6 @@ class DynamicModel(ecosim.base.Storable):
             new_traj_mat[i] = f_mat @ trajectory[t]
 
         return ecosim.base.Trajectory(trajectory.vec_t, new_traj_mat, parent_sim=self)
-
-    def set_current_state(self, vec_x):
-        self._simulator.vec_x = vec_x
 
     """From now on, the idea is that the properties of the InteractionNetwork class should only be modified
     throught he wrapper functions of the DynamicModel class. We don't provide in place access functions for the _interaction_network
@@ -397,8 +395,18 @@ class DynamicModel(ecosim.base.Storable):
     def lam(self, val):
         self._simulator.lam = val
 
+    @property
+    def current_state(self):
+        return self._simulator.vec_x
+    @current_state.setter
+    def current_state(self, val):
+        self._simulator.vec_x = val
+
     def resample_interactions(self, **kwargs):
         self._interaction_network.sample_matrix(**kwargs)
 
     def set_integrator(self, name, *, log_transform=False, **kwargs):
         self._simulator.set_integrator(name, log_transform=log_transform, **kwargs)
+        
+    def reset_time(self):
+        self._simulator.reset_time()

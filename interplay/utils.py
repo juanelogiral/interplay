@@ -6,12 +6,43 @@ from bisect import bisect_left
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+from math import log
 from scipy.integrate import cumtrapz
+
+def KL_divergence(model, data):
+    """Given a set of empirical data, computes the KL divergence between the model (given as a PDF) and the data (given as a set of values)
+    """
+    counts,edges = np.histogram(data, density=True)
+    model_counts = np.array([model((edges[i]+edges[i+1])/2) for i in len(edges)])
+    return np.sum(counts*np.log(counts/model_counts))
+
+def gaussian_KL_divergence(model,data):
+    mu1,sig1 = model
+    mu0,sig0 = data
+    return log(sig1/sig0) + .5*(sig0**2 + (mu1-mu0)**2)/sig1**2 - .5
+
+def cdf_distance(data1,data2):
+    """Given two sets of data, computes the supremum norm between their cdfs
+    """
+    data1 = np.sort(data1)
+    data2 = np.sort(data2)
+    i,j=0,0
+    maxi=0
+    while i<len(data1) and j<len(data2):
+        if data1[i]<data2[j]:
+            i+=1
+            maxi = max(maxi,abs(i/len(data2) - j/len(data1)))
+        elif data1[i]>data2[j]:
+            j+=1
+            maxi = max(maxi,abs(i/len(data1) - j/len(data2)))
+        else:
+            i+=1
+            j+=1
+    return maxi
 
 """ Given a function, this class tabulates its values and then defines an interpolated version of the original function
     This is intended to speed-up evaluation of complicated functions, such as those defined by integrals
 """
-
 
 class GeneralInterpolator:
     def __init__(self):

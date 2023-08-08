@@ -24,7 +24,13 @@ class dmftModel(ecosim.base.Storable):
     @K.setter
     def K(self, val):
         self._interaction_network.K = val
-
+        
+    @staticmethod
+    def test_data(data,*args):
+        ''' The purpose of test_data is to provide a way to test how far from a model the provided data is.
+        It is implemented by each model, and should return a number that is small if the data is close to the model.
+        '''
+        return RuntimeError("test_data has not been implemented for this model.")
 
 class EqdmftModel(dmftModel):
     def __init__(self, S):
@@ -54,5 +60,6 @@ class EqdmftModel(dmftModel):
     def full_solve(self):
         raise RuntimeError("full_solve has not been implemented for this model.")
     
-    def test_data(self):
+    @staticmethod
+    def test_data(data,*args):
         return RuntimeError("test_data has not been implemented for this model.")

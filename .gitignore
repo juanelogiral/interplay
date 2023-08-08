@@ -1,3 +1,5 @@
-src/__pycache__
+interplay/__pycache__
 .venv
 .vscode
+interplay/**/*.pyc
+
