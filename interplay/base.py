@@ -270,8 +270,8 @@ class DynamicModel(ecosim.base.Storable):
             functions = self._interaction_network.functions()
         f_mat = np.array([f.sources for f in functions])
 
-        new_traj_mat = np.zeros((len(trajectory.time_points), len(functions)))
-        for i, t in enumerate(trajectory.time_points):
+        new_traj_mat = np.zeros((len(trajectory.anchors[0]), len(functions)))
+        for i, t in enumerate(trajectory.anchors[0]):
             new_traj_mat[i] = f_mat @ trajectory[t]
 
         return ecosim.base.Trajectory(trajectory.vec_t, new_traj_mat, parent_sim=self)
