@@ -8,6 +8,7 @@ import numpy as np
 import seaborn as sns
 from math import log
 from scipy.integrate import cumtrapz
+import sys
 
 def KL_divergence(model, data):
     """Given a set of empirical data, computes the KL divergence between the model (given as a PDF) and the data (given as a set of values)
@@ -358,3 +359,190 @@ class Interpolator(GeneralInterpolator):
             self.expand(x, self._max_bound)
 
         return super()._interpolate(x)
+    
+## Fast Fourier transforms
+# Codes adapted from Emil Mallmin
+
+def fft(mat, axis=0, target='cpu'):
+    '''
+    Calculate the FFT of a matrix along a given axis on cpu or gpu.
+
+    Parameters
+    ----------
+    mat : ndarray
+        matrix over which to compute FFT
+    axis : int
+        axis along which to compute FFT
+    target : {'cpu', 'gpu'}
+        platform to run FFT on
+
+    Returns
+    -------
+    mat_fft : ndarray
+        transformed array, where the ``axis`` dimension indexes frequency in range ``0:mat.shape[axis]//2+1``
+    '''
+    
+    if target == 'gpu':
+        if 'cupy' not in sys.modules:
+             import cupy
+        xp = sys.modules['cupy']
+        arr = xp.asarray(arr, dtype='float32')
+    elif target == 'cpu':
+        xp = sys.modules['numpy']
+    else:
+        raise ValueError('target must be either cpu or gpu')
+    
+    return xp.fft.rfft(mat,axis=axis)
+
+
+def autocorr_fft(traj,species='all', lags=200, standardize=True, real_input=True, target='cpu'):
+    '''
+    Calculate the autocorrelation function using FFT on cpu or gpu.
+
+    Parameters
+    ----------
+    arr : Trajectory
+        trajectory over which to compute autocorrelation. Trajectory anchors will be used as the discrete time points.
+    species : string or np.array slicer
+        species for which autocorrelation is to be computed. Either 'all' or some type able to slice an np.array
+    lags : int
+        number of lags to include (size of return vector)
+    standardize : bool
+        to subtract mean and normalize by variance
+    target : {'cpu', 'gpu'}
+        platform to run FFT on
+
+    Returns
+    -------
+    vec_acf : ndarray
+        transformed array, where the ``axis`` dimension indexes time lags in range ``0:lags``    
+    '''
+    
+    # construct array from trajectory
+    if species == 'all':
+        sp_idx = slice(None)
+    else:
+        sp_idx=species
+    arr = traj.anchors[1][:,sp_idx]
+    
+    axis = 0 #correlation computed over first axis
+    
+    # Zero padding for FFT
+    pow2 = int(2**np.ceil(np.log2(arr.shape[axis])))
+
+    if standardize:
+        arr = arr - np.mean(arr,axis=axis)
+
+    
+    if target == 'gpu':
+        if 'cupy' not in sys.modules:
+             import cupy
+        xp = sys.modules['cupy']
+        arr = xp.asarray(arr, dtype='float32')
+    else:
+        xp = sys.modules['numpy']
+
+    fft = xp.fft.rfft if real_input else xp.fft.fft
+    ifft = xp.fft.irfft if real_input else xp.fft.ifft
+
+    arr_fft = fft(arr, axis=axis, n=pow2)
+    arr_acf = ifft( arr_fft * xp.conjugate(arr_fft), axis=axis).real / pow2
+    
+    # Normalize
+    if standardize:
+        ax = arr.ndim - 1 if axis == -1 else axis
+        ids = (slice(None),)*ax + (0,) + (slice(None),)*(arr.ndim - ax - 1)
+        arr_acf = arr_acf[:lags] / arr_acf[ids]
+   
+    if target == 'gpu':
+        arr_acf = xp.asnumpy(arr_acf)
+
+    return arr_acf
+
+
+
+def crosscorr_fft(traj, species, lags=200, standardize=True, real_input=True, target='cpu'):
+    '''
+    Compute all crosscorrelation functions between species
+
+    Parameters
+    ----------
+    traj : Trajectory
+        trajectory over which to compute autocorrelation. Trajectory anchors will be used as the discrete time points.
+    species : 'all' or np.array slicer
+        species for which autocorrelation is to be computed. Either 'all' or some type able to slice an np.array    
+    lags : int
+        number of lags to include (size of return vector)
+    standardize : bool
+        to subtract mean and normalize by variance
+    target : {'cpu', 'gpu'}
+        platform to run FFT on
+        
+    Returns
+    -------
+    ten_ccf : 3darray
+        transformed array, where the dimension 0 indexes time lags in range ``0:lags``,
+        and dimension 1,2 the indices of columns of the input
+    '''
+
+    if species == 'all':
+        sp_idx = slice(None)
+    else:
+        sp_idx=species
+
+    mat = traj.anchor[1][:,sp_idx]
+    
+    # Zero padding for FFT
+    pow2 = int(2**np.ceil(np.log2(mat.shape[0])))
+    S = mat.shape[1]  
+   
+    if standardize:
+        mat = mat - np.mean(mat,axis=0)
+  
+    if target == 'cpu':
+        dtype = np.float64
+        xp = sys.modules['numpy']        
+    elif target=='gpu':
+        if 'cupy' not in sys.modules:
+            import cupy
+        dtype = np.float32
+        xp = sys.modules['cupy']
+        mat = xp.asarray(mat, dtype='float32')
+    
+    ten_ccf = xp.zeros((lags,S,S), dtype=dtype)
+
+    fft = xp.fft.rfft if real_input else xp.fft.fft
+    ifft = xp.fft.irfft if real_input else xp.fft.ifft
+
+    mat_fft = fft(mat, axis=0, n=pow2)
+
+    for i in range(S):
+
+        vec_fft_i = xp.conjugate(mat_fft[:,i])[:,None]
+        
+        #column j now represents the (i,i+j) correlator
+        mat_ccf = ifft(mat_fft[:,i:] * vec_fft_i, axis=0).real / pow2
+                
+        ten_ccf[:,i,i:] = mat_ccf[:lags,:]
+        
+
+    if standardize:
+        vec_std = xp.diagonal(ten_ccf[0,:,:])
+        mat_var = xp.sqrt(xp.outer(vec_std, vec_std))
+
+        # could give silent division by zero => nan
+        ten_ccf /= mat_var
+
+    # fill in lower triangle
+    ten_ccf += xp.transpose(ten_ccf, axes=(0,2,1)) #will double the diagonal
+    
+    # Halve the diagonal. Maybe a smarter way exists?
+    mat_halve_diag = xp.ones((S,S),dtype=dtype)
+    xp.fill_diagonal(mat_halve_diag, 0.5)
+    ten_ccf *= mat_halve_diag
+
+    if target == 'gpu':
+        ten_ccf = xp.asnumpy(ten_ccf)
+
+    return ten_ccf
+
