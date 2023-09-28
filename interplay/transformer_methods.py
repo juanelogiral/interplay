@@ -2,8 +2,11 @@ import numpy as np
 import scipy
 from math import sqrt
 from scipy.linalg import expm
+from scipy.stats import differential_entropy
 
 default_args = {}
+
+### SOME SIMPLE TRANSFORMATIONS ###
 
 default_args["orthogonal_mixing"] = {}
 default_args["mode_mixing"] = {}
@@ -40,3 +43,20 @@ def infinitesimal_rotation(network,dt):
         f.sources = U @ f.sources
     network.direct_interactions = U @ network.direct_interactions @ U.T
     
+
+### COARSE-GRAINING PROCEDURES ###
+
+def structural_coarse_graining(network,epsilon=0):
+    M = network.structure_matrix
+    u,sv,v = np.linalg.svd(M)
+
+    u_entropy = np.array([differential_entropy(_) for _ in u.T])
+    v_entropy = np.array([differential_entropy(_) for _ in v])
+    
+    str_dir = u_entropy > epsilon or v_entropy > epsilon
+    
+    new_str_mat = u[str_dir] @ np.diag([_  if str_dir[i] else 0 for i,_ in enumerate(sv)]) @ v[str_dir]
+    str_spectrum = np.array([_  if not str_dir[i] else 0 for i,_ in enumerate(sv)])
+    
+    network.structure_matrix = new_str_mat
+    network.set_random_component('orthogonal',spectrum=str_spectrum)

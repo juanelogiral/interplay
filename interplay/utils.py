@@ -5,7 +5,6 @@ from bisect import bisect_left
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 from math import log
 from scipy.integrate import cumtrapz
 import sys
@@ -270,11 +269,14 @@ class GeneralInterpolator:
         else:
             raise ValueError(f"Inner must be callable, not {type(inner)}.")
 
-    def plot(self):
-        sns.set_style("darkgrid")
-        pl = sns.lineplot(x=self._vec_x, y=self._vec_y, linewidth=1.5)
-        pl.legend([], [], frameon=False)
-        plt.show()
+    def plot(self,ax=None,label=None):
+        if ax is None:
+            ax = plt.gca()
+        if label is None:
+            ax.plot(self._vec_x, self._vec_y, linewidth=1.5)
+        else:
+            ax.plot(self._vec_x, self._vec_y, linewidth=1.5, label=label)
+        return ax
 
 
 class StaticInterpolator(GeneralInterpolator):

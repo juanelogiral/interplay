@@ -64,6 +64,10 @@ class Eqdmft_gaussian(EqdmftModel):
 
         S = self.S
         K = self.K
+        try:
+            iter(K)
+        except:
+            K = K*np.ones(S)
         sig = self.sig
         gam = self.gam
 
@@ -74,15 +78,16 @@ class Eqdmft_gaussian(EqdmftModel):
         op2 = lambda y, q, chi: np.mean(omega0(y + K / sqrt(q * sig**2))) / (1 - gam * sig**2 * chi)
         op3 = lambda y, q, chi: sig**2* q * np.mean(omega2(y + K / sqrt(q * sig**2))) / (1 - gam * sig**2 * chi) ** 2
 
-        q0 = 1
-        chi0 = 1
-        y0 = np.ones(S)
+        q0 = np.random.rand()
+        chi0 = np.random.rand()
+        m0 = np.random.uniform(-1,1,S)
 
         if verbose:
             for i in range(n_iter):
                 y0 = y0 * (1 - r) + r * op1(y0, q0, chi0)
                 chi0 = chi0 * (1 - r) + r * op2(y0, q0, chi0)
                 q0 = q0 * (1 - r) + r * op3(y0, q0, chi0)
+                print("Iteration {i} done".format(i=i))
             print(
                 "Errors are (%f , %f , %f)"
                 % (
@@ -100,7 +105,7 @@ class Eqdmft_gaussian(EqdmftModel):
         d_means = (K + sig * sqrt(q0) * y0) / (1 - gam * sig**2 * chi0)
         d_std = sig * sqrt(q0) / (1 - gam * sig**2 * chi0)
 
-        self._SAD = lambda x : np.mean(exp(-(x-d_means)**2 / (2 * d_std**2)))/sqrt(2 * pi * d_std**2)
+        self._SAD = lambda x : np.mean(np.exp(-(x-d_means)**2 / (2 * d_std**2)))/sqrt(2 * pi * d_std**2)
         self._SAD_bounds = (
             0,
             np.max(d_means) + 4 * d_std,
@@ -111,62 +116,77 @@ class Eqdmft_gaussian(EqdmftModel):
     
     def _full_solve_eigen(self, verbose=True, n_iter=200, r=0.25):
         omega0 = lambda delta: (1 + erf(delta / sqrt(2))) / 2
-        omega1 = lambda delta: delta * omega0(delta) + exp(-(delta**2) / 2) / sqrt(2 * pi)
-        omega2 = lambda delta: omega0(delta) * (1 + delta**2) + delta * exp( -(delta**2) / 2) / sqrt(2 * pi)
-
         omega0 = np.vectorize(omega0)
-        omega1 = np.vectorize(omega1)
-        omega2 = np.vectorize(omega2)
-
+    
         self._interaction_network.sample_matrix()
         mu = self._interaction_network.structure_component
         
         S = self.S
         K = self.K
+        try:
+            iter(K)
+        except:
+            K = K*np.ones(S)
         sig = self.sig
         gam = self.gam
         
         # We compute the eigenvalues and eigenvectors of the interaction matrix
         # and filter them
-        thr = 1e-2
+        thr = 1e-1
         u,eig,v = np.linalg.svd(mu)
         n_eig = len(eig[eig>thr])
         u = u[:,:n_eig] * eig[:n_eig] * sqrt(S)
         v = v[:n_eig,:] / sqrt(S)
-        
+        print("Found {n_eig} eigenvectors".format(n_eig=n_eig))
         #beta is a species index and i is an eigenvalue index
-        delta = lambda beta,m,q : (K + m @ v[:,beta])/sqrt(q*sig**2)
-        op1 = lambda m,q,chi : sqrt(q)*sig *np.array([u[:,i] * np.mean([omega1(delta(beta,m,q)) for beta in range(S)])/(1-gam*sig**2*chi) for i in range(n_eig)])
-        op2 = lambda m,q,chi : np.mean(omega0(delta(beta,m,q)) for beta in range(S))/(1-gam*sig**2*chi)
-        op3 = lambda m,q,chi : sig**2 *q * np.mean(omega2(delta(beta,m,q)) for beta in range(S))/(1-gam*sig**2*chi)**2
+        delta = lambda beta,m,q : (K[beta] + m @ u[beta,:])/sqrt(q*sig**2)
+        op1 = lambda q,chi,o1: sqrt(q)*sig *np.array([np.sum(v[i,:] * o1) for i in range(n_eig)])/(1-gam*sig**2*chi)
+        op2 = lambda q,chi,o0 : np.mean(o0)/(1-gam*sig**2*chi)
+        op3 = lambda q,chi,o2 : sig**2 *q * np.mean(o2)/(1-gam*sig**2*chi)**2
         
-        q0 = 1
-        chi0 = 1
-        m0 = np.ones(n_eig)
+        q0 = np.random.rand()
+        chi0 = np.random.rand()
+        m0 = np.random.uniform(-1,1,n_eig)
 
         if verbose:
             for i in range(n_iter):
-                m0 = m0 * (1 - r) + r * op1(m0, q0, chi0)
-                chi0 = chi0 * (1 - r) + r * op2(m0, q0, chi0)
-                q0 = q0 * (1 - r) + r * op3(m0, q0, chi0)
+                delta_vec = np.array([delta(beta,m0,q0) for beta in range(S)])
+                o0 = omega0(delta_vec)
+                o1 = delta_vec * o0 + np.exp(-(delta_vec**2) / 2) / sqrt(2 * pi)
+                o2 = o0 * (1 + delta_vec**2) + delta_vec * np.exp( -(delta_vec**2) / 2) / sqrt(2 * pi)
+  
+                m0 = m0 * (1 - r) + r * op1(q0, chi0,o1)
+                chi0 = chi0 * (1 - r) + r * op2(q0, chi0,o0)
+                q0 = q0 * (1 - r) + r * op3(q0, chi0,o2)
+                print("Iteration {i} done".format(i=i))
+             
+            delta_vec = np.array([delta(beta,m0,q0) for beta in range(S)])
+            o0 = omega0(delta_vec)
+            o1 = delta_vec * o0 + np.exp(-(delta_vec**2) / 2) / sqrt(2 * pi)
+            o2 = o0 * (1 + delta_vec**2) + delta_vec * np.exp( -(delta_vec**2) / 2) / sqrt(2 * pi)   
             print(
                 "Errors are (%f , %f , %f)"
                 % (
-                    np.linalg.norm(m0 - op1(m0, q0, chi0)),
-                    chi0 - op2(m0, q0, chi0),
-                    q0 - op3(m0, q0, chi0),
+                    np.linalg.norm(m0 - op1(q0, chi0,o1)),
+                    chi0 - op2(q0, chi0,o0),
+                    q0 - op3(q0, chi0,o2),
                 )
             )
         else:
             for i in range(n_iter):
-                m0 = m0 * (1 - r) + r * op1(m0, q0, chi0)
-                chi0 = chi0 * (1 - r) + r * op2(m0, q0, chi0)
-                q0 = q0 * (1 - r) + r * op3(m0, q0, chi0)
+                delta_vec = np.array([delta(beta,m0,q0) for beta in range(S)])
+                o0 = omega0(delta_vec)
+                o1 = delta_vec * o0 + np.exp(-(delta_vec**2) / 2) / sqrt(2 * pi)
+                o2 = o0 * (1 + delta_vec**2) + delta_vec * np.exp( -(delta_vec**2) / 2) / sqrt(2 * pi)
+                
+                m0 = m0 * (1 - r) + r * op1(q0, chi0,o1)
+                chi0 = chi0 * (1 - r) + r * op2(q0, chi0,o0)
+                q0 = q0 * (1 - r) + r * op3(q0, chi0,o2)
 
-        d_means = sqrt(q0)*sig * [delta(beta,m0,q0) for beta in range(S)] / (1 - gam * sig**2 * chi0)
+        d_means = sqrt(q0)*sig * np.array([delta(beta,m0,q0) for beta in range(S)]) / (1 - gam * sig**2 * chi0)
         d_std = sig * sqrt(q0) / (1 - gam * sig**2 * chi0)
 
-        self._SAD = lambda x : np.mean(exp(-(x-d_means)**2 / (2 * d_std**2)))/sqrt(2 * pi * d_std**2)
+        self._SAD = lambda x : np.mean([np.exp(-(x-d_means)**2 / (2 * d_std**2))])/sqrt(2 * pi * d_std**2)
         self._SAD_bounds = (
             0,
             np.max(d_means) + 4 * d_std,
