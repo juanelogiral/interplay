@@ -158,46 +158,93 @@ class Eqdmft_orthogonal(EqdmftModel):
         R_tr = g_tr.inverse() - (lambda x: 1 / x)
         dR_tr = 1 / (dg_tr @ g_tr.inverse()) + (lambda x: 1 / x**2)
 
+        self._interaction_network.sample_matrix()
+        mu = self._interaction_network.structure_component
+        S = mu.shape[0]
+        # We compute the eigenvalues and eigenvectors of the interaction matrix
+        # and filter them
+        thr = 1e-3
+        u,eig,v = np.linalg.svd(mu)
+        n_eig = len(eig[eig>thr])
+        u = u[:,:n_eig] * eig[:n_eig] * sqrt(S)
+        v = v[:n_eig,:] / sqrt(S)
+        print("Found {n_eig} eigenvectors".format(n_eig=n_eig))
+        
         omega0 = lambda delta: (1 + erf(delta / sqrt(2))) / 2
-        omega2 = lambda delta: omega0(delta) * (1 + delta**2) + delta * exp( -(delta**2) / 2) / sqrt(2 * pi)
+        omega0 = np.vectorize(omega0)
+        
+        delta = lambda beta,m,z : (1 + m @ u[beta,:])/np.sqrt(z)
 
-        op1 = lambda q, dz, z: self._gam * (R_tr(omega0(1 / sqrt(z)) / (1 - dz)))
-        op2 = lambda q, dz, z: q * dR_tr(omega0(1 / sqrt(z)) / (1 - dz))
-        op3 = lambda q, dz, z: z * omega2(1 / sqrt(z)) / (1 - dz) ** 2
+        op1 = lambda q, dz, z, o0: R_tr(np.mean(o0) / (1 - dz))
+        op2 = lambda q, dz, z, o0: q * dR_tr(np.mean(o0) / (1 - dz))
+        op3 = lambda q, dz, z, o2: z * np.mean(o2) / (1 - dz) ** 2
+        op4 = lambda q, dz, z ,o1: np.sqrt(z) *np.array([np.sum(v[i,:] * o1) for i in range(n_eig)])/(1-dz)
 
         q0 = 1
         dz0 = 0.5
         z0 = 1
+        m0 = np.random.uniform(-1,1,n_eig)
 
         if verbose:
             for i in range(n_iter):
-                dz0 = dz0 * (1 - r) + r * op1(q0, dz0, z0)
-                z0 = z0 * (1 - r) + r * op2(q0, dz0, z0)
-                q0 = q0 * (1 - r) + r * op3(q0, dz0, z0)
-            print(
-                "\n Errors are (%f , %f , %f)"
+                delta_vec = np.array([delta(beta,m0,z0) for beta in range(S)])
+                o0 = omega0(delta_vec)
+                o1 = delta_vec * o0 + np.exp(-(delta_vec**2) / 2) / sqrt(2 * pi)
+                o2 = o0 * (1 + delta_vec**2) + delta_vec * np.exp( -(delta_vec**2) / 2) / sqrt(2 * pi)
+                
+                dz0 = dz0 * (1 - r) + r * op1(q0, dz0, z0,o0)
+                z0 = z0 * (1 - r) + r * op2(q0, dz0, z0,o0)
+                q0 = q0 * (1 - r) + r * op3(q0, dz0, z0,o2)
+                m0 = m0 * (1-r) + r* op4(q0,dz0,z0,o1)
+                print(
+                "\n Iteration %i : (%f , %f , %f, %f)"
                 % (
-                    np.linalg.norm(dz0 - op1(q0, dz0, z0)),
-                    z0 - op2(q0, dz0, z0),
-                    q0 - op3(q0, dz0, z0),
+                    i,
+                    np.linalg.norm(m0 - op4(q0, dz0, z0,o1)),
+                    dz0 - op1(q0, dz0, z0,o0),
+                    z0 - op2(q0, dz0, z0,o0),
+                    q0 - op3(q0, dz0, z0,o2),
+                ))
+            
+            delta_vec = np.array([delta(beta,m0,z0) for beta in range(S)])
+            o0 = omega0(delta_vec)
+            o1 = delta_vec * o0 + np.exp(-(delta_vec**2) / 2) / sqrt(2 * pi)
+            o2 = o0 * (1 + delta_vec**2) + delta_vec * np.exp( -(delta_vec**2) / 2) / sqrt(2 * pi)
+                
+            print(
+                "\n Errors are (%f , %f , %f, %f)"
+                % (
+                    np.linalg.norm(m0 - op4(q0, dz0, z0,o1)),
+                    dz0 - op1(q0, dz0, z0,o0),
+                    z0 - op2(q0, dz0, z0,o0),
+                    q0 - op3(q0, dz0, z0,o2),
                 )
             )
         else:
             for i in range(n_iter):
-                dz0 = dz0 * (1 - r) + r * op1(q0, dz0, z0)
-                z0 = z0 * (1 - r) + r * op2(q0, dz0, z0)
-                q0 = q0 * (1 - r) + r * op3(q0, dz0, z0)
+                delta_vec = np.array([delta(beta,m0,z0) for beta in range(S)])
+                o0 = omega0(delta_vec)
+                o1 = delta_vec * o0 + np.exp(-(delta_vec**2) / 2) / sqrt(2 * pi)
+                o2 = o0 * (1 + delta_vec**2) + delta_vec * np.exp( -(delta_vec**2) / 2) / sqrt(2 * pi)
+                
+                dz0 = dz0 * (1 - r) + r * op1(q0, dz0, z0,o0)
+                z0 = z0 * (1 - r) + r * op2(q0, dz0, z0,o0)
+                q0 = q0 * (1 - r) + r * op3(q0, dz0, z0,o2)
+                m0 = m0 * (1-r) + r* op4(q0,dz0,z0,o1)
 
-        d_mean = 1 / (1 - dz0)
+        d_means = sqrt(z0) * np.array([delta(beta,m0,z0) for beta in range(S)]) / (1 - dz0)
         d_std = sqrt(z0) / (1 - dz0)
 
-        self._SAD = lambda x: exp(-0.5 * (x - d_mean) ** 2 / d_std**2) / sqrt(
-            2 * pi * d_std**2
+        self._SAD = lambda x : np.mean([np.exp(-(x-d_means)**2 / (2 * d_std**2))])/sqrt(2 * pi * d_std**2)
+        self._SAD_bounds = (
+            0,
+            np.max(d_means) + 4 * d_std,
         )
-        self._SAD_bounds = (0, (1 + 5 * z0) / (1 - dz0))
+        
         self._self_avg_quantities["q"] = q0
         self._self_avg_quantities["dz"] = dz0
         self._self_avg_quantities["z"] = z0
+        self._self_avg_quantities["m"] = m0
         
     @classmethod
     def test_data(self, data,spectrum,r=.25,n_iter=200,**kwargs):

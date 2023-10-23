@@ -7,7 +7,7 @@ from inspect import getmembers, isfunction
 import ecosim
 import numpy as np
 
-import cluster_methods
+from . import cluster_methods
 
 from .base import InteractionNetwork
 
