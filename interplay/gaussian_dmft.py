@@ -87,7 +87,7 @@ class Eqdmft_gaussian(EqdmftModel):
                 y0 = y0 * (1 - r) + r * op1(y0, q0, chi0)
                 chi0 = chi0 * (1 - r) + r * op2(y0, q0, chi0)
                 q0 = q0 * (1 - r) + r * op3(y0, q0, chi0)
-                print("Iteration {i} done".format(i=i))
+                print("Iteration {i} done".format(i=i),end="\r")
             print(
                 "Errors are (%f , %f , %f)"
                 % (
@@ -132,7 +132,7 @@ class Eqdmft_gaussian(EqdmftModel):
         
         # We compute the eigenvalues and eigenvectors of the interaction matrix
         # and filter them
-        thr = 1e-1
+        thr = 1e-2
         u,eig,v = np.linalg.svd(mu)
         n_eig = len(eig[eig>thr])
         u = u[:,:n_eig] * eig[:n_eig] * sqrt(S)
@@ -162,7 +162,7 @@ class Eqdmft_gaussian(EqdmftModel):
                     np.linalg.norm(m0 - op1(q0, chi0,o1)),
                     chi0 - op2(q0, chi0,o0),
                     q0 - op3(q0, chi0,o2),
-                ))
+                ),end="\r")
              
             delta_vec = np.array([delta(beta,m0,q0) for beta in range(S)])
             o0 = omega0(delta_vec)
@@ -198,6 +198,7 @@ class Eqdmft_gaussian(EqdmftModel):
         self._self_avg_quantities["q"] = q0
         self._self_avg_quantities["chi"] = chi0
         self._self_avg_quantities["m"] = m0
+        self._self_avg_quantities["phi"] = np.mean(omega0(delta_vec))
 
     def full_solve(self, verbose=True, n_iter=200, r=0.25,reduce_dimension=True):
         if not reduce_dimension:
