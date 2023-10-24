@@ -117,6 +117,7 @@ class Eqdmft_gaussian(EqdmftModel):
         self._self_avg_quantities["q"] = q0
         self._self_avg_quantities["chi"] = chi0
         self._self_avg_quantities["y"] = y0
+        self._self_avg_quantities["phi"] = np.mean(omega0(y0 + K/sqrt(q0*sig**2)))
     
     def _full_solve_eigen(self, verbose=True, n_iter=200, r=0.25):
         omega0 = lambda delta: (1 + erf(delta / sqrt(2))) / 2
