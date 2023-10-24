@@ -87,7 +87,11 @@ class Eqdmft_gaussian(EqdmftModel):
                 y0 = y0 * (1 - r) + r * op1(y0, q0, chi0)
                 chi0 = chi0 * (1 - r) + r * op2(y0, q0, chi0)
                 q0 = q0 * (1 - r) + r * op3(y0, q0, chi0)
-                print("Iteration {i} done".format(i=i),end="\r")
+                print("Iteration %i: (%f,%f,%f)"%(i,
+                    np.linalg.norm(m0 - op1(q0, chi0,o1)),
+                    chi0 - op2(q0, chi0,o0),
+                    q0 - op3(q0, chi0,o2),
+                ),end="\r")
             print(
                 "Errors are (%f , %f , %f)"
                 % (
